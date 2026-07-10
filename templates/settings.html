@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-shell settings-shell">
+  <div class="auth-copy">
+    <p class="eyebrow">Preferences</p>
+    <h1>Settings</h1>
+    <p>This section is ready for profile management, theme selection, and future enhancements such as export and notifications.</p>
+  </div>
+
+  <div class="glass-card auth-card">
+    <div class="auth-card__header">
+      <h2>Profile</h2>
+      <p>Keep your workspace aligned with your style.</p>
+    </div>
+    <div class="form-stack">
+      <div class="stat-card">
+        <h3>Account details</h3>
+        <p class="muted">Name: {{ user.name }}</p>
+        <p class="muted">Email: {{ user.email }}</p>
+      </div>
+      <a class="btn btn-secondary" href="/logout">Logout</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

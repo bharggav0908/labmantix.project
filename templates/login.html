@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block body_class %}auth-body{% endblock %}
+{% block content %}
+<div class="auth-shell">
+  <div class="auth-copy">
+    <p class="eyebrow">Welcome back</p>
+    <h1>Log in to continue your review flow.</h1>
+    <p>Sign in to review code, track progress, and keep every insight organized in one place.</p>
+    <div class="auth-highlights">
+      <span>Realtime insights</span>
+      <span>Secure access</span>
+      <span>Beautiful workspace</span>
+    </div>
+  </div>
+
+  <div class="glass-card auth-card">
+    <div class="auth-card__header">
+      <h2>Sign in</h2>
+      <p>Welcome back. Your workspace is ready.</p>
+    </div>
+    <form method="post" action="/login" class="form-stack">
+      <div class="field-group">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" placeholder="name@company.com" required />
+      </div>
+      <div class="field-group password-field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" placeholder="Enter your password" required />
+        <button type="button" class="password-toggle" data-target="password" aria-label="Toggle password visibility">Show</button>
+      </div>
+      {% if error %}<p class="form-error">Invalid email or password.</p>{% endif %}
+      <label class="checkbox-row">
+        <input type="checkbox" />
+        <span>Remember me</span>
+      </label>
+      <button class="btn" type="submit">Login</button>
+      <div class="auth-links">
+        <a href="/signup">Create an account</a>
+        <a href="/login">Forgot password?</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('.password-toggle').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = document.getElementById(button.dataset.target);
+      if (!target) return;
+      const isHidden = target.type === 'password';
+      target.type = isHidden ? 'text' : 'password';
+      button.textContent = isHidden ? 'Hide' : 'Show';
+    });
+  });
+</script>
+{% endblock %}

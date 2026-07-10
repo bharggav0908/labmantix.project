@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero-panel hero-panel--dashboard">
+  <div class="hero-copy">
+    <p class="eyebrow">Workspace overview</p>
+    <h1>Hello, {{ user.name }}</h1>
+    <p>Create projects, connect GitHub links, and review code with AI-powered findings, quality scoring, and complexity insights.</p>
+    <div class="action-row">
+      <a class="btn" href="#new-review">Start a review</a>
+      <a class="btn btn-secondary" href="/history">View history</a>
+    </div>
+  </div>
+  <div class="glass-card dashboard-summary">
+    <div class="summary-pill">AI + Static</div>
+    <div class="summary-stats">
+      <div>
+        <strong>{{ projects|length }}</strong>
+        <span>Projects</span>
+      </div>
+      <div>
+        <strong>{{ stats.total_reviews or 0 }}</strong>
+        <span>Total reviews</span>
+      </div>
+      <div>
+        <strong>{{ "%.1f"|format(stats.avg_score or 0) }}</strong>
+        <span>Average score</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="glass-card section-card">
+    <div class="section-card__header">
+      <div>
+        <p class="eyebrow">Create project</p>
+        <h2>Launch a new workspace</h2>
+      </div>
+    </div>
+    <form method="post" action="/projects" class="form-stack">
+      <div class="field-group">
+        <label for="project_name">Project Name</label>
+        <input id="project_name" name="project_name" placeholder="Example: E-commerce API" required />
+      </div>
+      <div class="field-group">
+        <label for="github_url">GitHub URL</label>
+        <input id="github_url" name="github_url" placeholder="https://github.com/user/repo" />
+      </div>
+      <button class="btn" type="submit">Create Project</button>
+    </form>
+  </div>
+
+  <div class="glass-card section-card" id="new-review">
+    <div class="section-card__header">
+      <div>
+        <p class="eyebrow">New review</p>
+        <h2>Generate a fresh report</h2>
+      </div>
+    </div>
+    <form method="post" action="/review" enctype="multipart/form-data" class="form-stack">
+      <div class="field-group">
+        <label for="project_id">Select Project</label>
+        {% if projects and projects|length > 0 %}
+        <select id="project_id" name="project_id" required>
+          {% for project in projects %}
+          <option value="{{ project.id }}">{{ project.project_name }}</option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <select id="project_id" name="project_id" disabled>
+          <option>No projects yet — create one above</option>
+        </select>
+        <p class="form-foot">Create a project first to enable code reviews.</p>
+        {% endif %}
+      </div>
+      <div class="field-group">
+        <label for="title">Review Title</label>
+        <input id="title" name="title" placeholder="Example: Login API Refactor" required />
+      </div>
+      <div class="field-group">
+        <label for="language">Language</label>
+        <select id="language" name="language">
+          <option value="Python">Python</option>
+          <option value="JavaScript">JavaScript</option>
+          <option value="TypeScript">TypeScript</option>
+          <option value="Java">Java</option>
+          <option value="C++">C++</option>
+          <option value="C">C</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label for="code">Paste Code</label>
+        <textarea id="code" name="code" placeholder="Paste your source code here..."></textarea>
+      </div>
+      <div class="field-group">
+        <label for="file">Upload Source File</label>
+        <input id="file" name="file" type="file" />
+      </div>
+      {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+      <button class="btn" type="submit">Generate Review</button>
+    </form>
+  </div>
+</section>
+
+<section class="dashboard-lists">
+  <div class="glass-card section-card">
+    <div class="section-card__header">
+      <div>
+        <p class="eyebrow">Projects</p>
+        <h2>Your workspace</h2>
+      </div>
+    </div>
+    <div class="review-list">
+      {% for project in projects %}
+      <div class="review-item">
+        <div class="review-meta">
+          <strong>{{ project.project_name }}</strong>
+          <span>{{ project.github_url or 'No GitHub URL' }}</span>
+        </div>
+      </div>
+      {% else %}
+      <p class="muted">No projects yet. Create one above to start reviewing code.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="glass-card section-card">
+    <div class="section-card__header">
+      <div>
+        <p class="eyebrow">Recent reviews</p>
+        <h2>Latest reports</h2>
+      </div>
+    </div>
+    <div class="review-list">
+      {% for review in reviews %}
+      <div class="review-item">
+        <div class="review-meta">
+          <strong>{{ review.title }}</strong>
+          <span>{{ review.project_name or review.language }}</span>
+        </div>
+        <p class="muted">{{ review.summary }}</p>
+        <div class="flex space-between">
+          <span class="score-pill {% if review.overall_score >= 80 %}good{% elif review.overall_score >= 60 %}warn{% else %}danger{% endif %}">{{ review.overall_score }}/100</span>
+          <a href="/review/{{ review.id }}">Open full report</a>
+        </div>
+      </div>
+      {% else %}
+      <p class="muted">No reviews yet. Create your first project and review to see it here.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

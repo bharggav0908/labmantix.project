@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="glass-card section-card section-card--wide">
+  <div class="section-card__header">
+    <div>
+      <p class="eyebrow">Review archive</p>
+      <h2>Review History</h2>
+    </div>
+    <a class="btn" href="/dashboard">New Review</a>
+  </div>
+
+  <form method="get" action="/history" class="form-stack history-form">
+    <div class="history-form__grid">
+      <div class="field-group">
+        <label for="q">Search</label>
+        <input id="q" name="q" value="{{ search }}" placeholder="Search by title or summary" />
+      </div>
+      <div class="field-group">
+        <label for="language">Filter by Language</label>
+        <select id="language" name="language">
+          <option value="">All</option>
+          {% for language in languages %}
+          <option value="{{ language }}" {% if language == selected_language %}selected{% endif %}>{{ language }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <button class="btn" type="submit">Apply Filters</button>
+  </form>
+
+  <div class="review-list mt-1">
+    {% for review in reviews %}
+    <div class="review-item">
+      <div class="review-meta">
+        <strong>{{ review.title }}</strong>
+        <span>{{ review.project_name or 'General Project' }} • {{ review.created_at[:10] }}</span>
+      </div>
+      <p class="muted">{{ review.summary }}</p>
+      <div class="flex space-between">
+        <span class="score-pill {% if review.overall_score >= 80 %}good{% elif review.overall_score >= 60 %}warn{% else %}danger{% endif %}">{{ review.overall_score }}/100</span>
+        <div class="flex">
+          <a href="/review/{{ review.id }}">Open</a>
+          <form method="post" action="/review/{{ review.id }}/delete" style="margin:0">
+            <button class="btn btn-secondary" type="submit">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <p class="muted">No prior reviews found.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

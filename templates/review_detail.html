@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="glass-card section-card section-card--wide">
+  <div class="section-card__header">
+    <div>
+      <p class="eyebrow">Review report</p>
+      <h2>{{ review.title }}</h2>
+      <p class="muted">{{ review.project_name or 'General Project' }} • {{ review.language }} • {{ review.review_type }} • {{ review.created_at[:10] }}</p>
+    </div>
+    <span class="score-pill {% if review.overall_score >= 80 %}good{% elif review.overall_score >= 60 %}warn{% else %}danger{% endif %}">{{ review.overall_score }}/100</span>
+  </div>
+
+  <div class="glass-card detail-card mt-1">
+    <h3>Summary</h3>
+    <p>{{ review.summary }}</p>
+  </div>
+
+  <div class="stats-grid mt-1">
+    <div class="stat-card">
+      <h3>{{ review.complexity.total_lines }}</h3>
+      <p class="muted">Total Lines</p>
+    </div>
+    <div class="stat-card">
+      <h3>{{ review.complexity.function_count }}</h3>
+      <p class="muted">Functions</p>
+    </div>
+    <div class="stat-card">
+      <h3>{{ review.complexity.class_count }}</h3>
+      <p class="muted">Classes</p>
+    </div>
+    <div class="stat-card">
+      <h3>{{ review.complexity.overall_complexity }}</h3>
+      <p class="muted">Complexity Score</p>
+    </div>
+  </div>
+
+  <div class="glass-card detail-card mt-1">
+    <h3>Findings</h3>
+    <div class="findings">
+      {% for finding in review.findings %}
+      <div class="finding {{ finding.severity }}">
+        <div class="review-meta">
+          <strong>{{ finding.issue }}</strong>
+          <span>Line {{ finding.line_number }}</span>
+        </div>
+        <p>{{ finding.explanation }}</p>
+        <p class="muted">Suggested fix: {{ finding.suggested_fix }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="glass-card detail-card mt-1">
+    <h3>Source Code</h3>
+    <pre class="code-block">{{ review.source_code }}</pre>
+  </div>
+</div>
+{% endblock %}

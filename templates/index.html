@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero-panel">
+  <div class="hero-copy">
+    <p class="eyebrow">Premium AI review platform</p>
+    <h1>Turn code reviews into a beautiful, high-velocity workflow.</h1>
+    <p>
+      Review code instantly with static analysis, quality scoring, complexity insights,
+      and AI-powered feedback for students, developers, freelancers, and small teams.
+    </p>
+    <div class="badge-row">
+      <span class="badge">Static Analysis</span>
+      <span class="badge">AI Review</span>
+      <span class="badge">Dashboard & History</span>
+      <span class="badge">Secure Authentication</span>
+    </div>
+    <div class="action-row">
+      <a class="btn" href="/signup">Get Started</a>
+      <a class="btn btn-secondary" href="/login">Login</a>
+    </div>
+  </div>
+
+  <div class="glass-card feature-stack">
+    <div class="feature-card feature-card--accent">
+      <div class="icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 7h14"></path><path d="M5 12h9"></path><path d="M5 17h7"></path>
+        </svg>
+      </div>
+      <div>
+        <h3>What the platform does</h3>
+        <p>Paste code, review structure, and surface issues with clarity and confidence.</p>
+      </div>
+    </div>
+    <ul class="feature-list">
+      <li>Paste code or upload supported source files</li>
+      <li>Analyze structure, style, and potential issues</li>
+      <li>Generate AI-assisted feedback on bugs and security</li>
+      <li>Keep a searchable history of every review</li>
+    </ul>
+  </div>
+</section>
+
+<section class="stats-grid">
+  <article class="stat-card stat-card--blue">
+    <div class="stat-icon">⚡</div>
+    <h3>Fast Review</h3>
+    <p>Submit code in seconds and receive actionable insights.</p>
+  </article>
+  <article class="stat-card stat-card--purple">
+    <div class="stat-icon">✨</div>
+    <h3>Best Practices</h3>
+    <p>Get suggestions for naming, structure, performance, and documentation.</p>
+  </article>
+  <article class="stat-card stat-card--green">
+    <div class="stat-icon">📈</div>
+    <h3>Complexity Metrics</h3>
+    <p>Understand the size and complexity of your codebase.</p>
+  </article>
+  <article class="stat-card stat-card--orange">
+    <div class="stat-icon">🗂️</div>
+    <h3>Saved History</h3>
+    <p>Revisit your previous reports whenever you need them.</p>
+  </article>
+</section>
+
+<section class="content-grid">
+  <div class="glass-card section-card">
+    <p class="eyebrow">Built for momentum</p>
+    <h2>Everything you need to review smarter.</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>Instant feedback</h3>
+        <p>Actionable suggestions arrive quickly so you can iterate without friction.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Readable insights</h3>
+        <p>Clean summaries highlight the areas that matter most for quality and clarity.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Productive history</h3>
+        <p>Search and revisit earlier reviews to keep momentum across projects.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Secure by default</h3>
+        <p>Authenticated workflows and polished experiences keep your work protected.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass-card section-card">
+    <p class="eyebrow">Why teams love it</p>
+    <h2>Elegant, fast, and polished.</h2>
+    <div class="testimonial-list">
+      <div class="testimonial-item">
+        <strong>“The experience feels premium from the first click.”</strong>
+        <span>— Product designer</span>
+      </div>
+      <div class="testimonial-item">
+        <strong>“It makes code review feel organized and calm.”</strong>
+        <span>— Engineering lead</span>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
