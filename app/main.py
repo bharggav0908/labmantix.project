@@ -14,6 +14,14 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from .review_utils import (
+    analyze_complexity,
+    ai_review,
+    build_review_result,
+    heuristic_review,
+    language_syntax_checks,
+)
+
 load_dotenv()
 
 app = FastAPI(title="AI Code Review Assistant")
@@ -159,92 +167,6 @@ def get_current_user(request: Request) -> dict[str, Any] | None:
     conn.close()
     return dict(user) if user else None
 
-
-def heuristic_review(code: str, language: str) -> list[dict[str, Any]]:
-    findings: list[dict[str, Any]] = []
-    lines = code.splitlines()
-
-    for index, line in enumerate(lines, start=1):
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if re.search(r"\b(eval|exec)\s*\(", stripped):
-            findings.append({
-                "line": index,
-                "severity": "high",
-                "category": "security",
-                "message": "Dynamic code execution can be unsafe and should be avoided when possible.",
-            })
-        if re.search(r"password|secret|api[_-]?key", stripped, re.IGNORECASE):
-            findings.append({
-                "line": index,
-                "severity": "high",
-                "category": "security",
-                "message": "Hard-coded secrets detected. Move them to environment variables.",
-            })
-        if len(stripped) > 140:
-            findings.append({
-                "line": index,
-                "severity": "medium",
-                "category": "readability",
-                "message": "This line is long. Consider refactoring it for readability.",
-            })
-        if re.search(r"\bTODO\b", stripped, re.IGNORECASE):
-            findings.append({
-                "line": index,
-                "severity": "low",
-                "category": "maintainability",
-                "message": "A TODO marker was found. Plan and remove it once implemented.",
-            })
-
-    if len(lines) > 180:
-        findings.append({
-            "line": 1,
-            "severity": "medium",
-            "category": "maintainability",
-            "message": "The file is quite large. Consider splitting it into smaller modules.",
-        })
-
-    if not findings:
-        findings.append({
-            "line": 1,
-            "severity": "info",
-            "category": "general",
-            "message": f"No obvious issues detected for {language or 'this code'}.",
-        })
-
-    return findings
-
-
-def ai_review(code: str, language: str) -> list[dict[str, Any]]:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key or OpenAI is None:
-        return heuristic_review(code, language)
-
-    client = OpenAI(api_key=api_key)
-    prompt = f"""
-You are a senior engineer reviewing code for bugs, security, performance, readability, and maintainability.
-Language: {language or 'unknown'}
-Code:
-{code}
-Return 3-6 concise review findings as JSON with fields: line, severity, category, message.
-"""
-    response = client.responses.create(model="gpt-4o-mini", input=prompt, temperature=0.2)
-    text = response.output_text.strip()
-    try:
-        payload = text if text.startswith("[") else text[text.find("["): text.rfind("]") + 1]
-        return json.loads(payload)
-    except Exception:
-        return heuristic_review(code, language)
-
-
-from .review_utils import (
-    analyze_complexity,
-    ai_review,
-    build_review_result,
-    heuristic_review,
-    language_syntax_checks,
-)
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request) -> HTMLResponse:
