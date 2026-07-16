@@ -37,7 +37,7 @@
         <h2>Launch a new workspace</h2>
       </div>
     </div>
-    <form method="post" action="/projects" class="form-stack">
+    <form id="create-project" method="post" action="/projects" class="form-stack">
       <div class="field-group">
         <label for="project_name">Project Name</label>
         <input id="project_name" name="project_name" placeholder="Example: E-commerce API" required />
@@ -58,6 +58,7 @@
       </div>
     </div>
     <form method="post" action="/review" enctype="multipart/form-data" class="form-stack">
+      {% if notice %}<p class="form-success">{{ notice }}</p>{% endif %}
       <div class="field-group">
         <label for="project_id">Select Project</label>
         {% if projects and projects|length > 0 %}
@@ -68,7 +69,7 @@
         </select>
         {% else %}
         <select id="project_id" name="project_id" disabled>
-          <option>No projects yet — create one above</option>
+          <option>No projects yet - create one above</option>
         </select>
         <p class="form-foot">Create a project first to enable code reviews.</p>
         {% endif %}
@@ -97,7 +98,7 @@
         <input id="file" name="file" type="file" />
       </div>
       {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
-      <button class="btn" type="submit">Generate Review</button>
+      <button class="btn" type="submit" {% if not projects %}disabled{% endif %}>Generate Review</button>
     </form>
   </div>
 </section>

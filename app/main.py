@@ -8,6 +8,8 @@ from typing import Any
 
 import bcrypt
 import jwt
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -28,12 +30,37 @@ app = FastAPI(title="AI Code Review Assistant")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "app.db")
+DATABASE_PATH = os.getenv(
+    "DATABASE_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "data", "app.db"),
+)
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+USE_POSTGRES = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 ALGORITHM = "HS256"
 
 
+class PostgresConnection:
+    def __init__(self, database_url: str):
+        self.conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+
+    def execute(self, query: str, params: tuple[Any, ...] | list[Any] = ()) -> RealDictCursor:
+        cursor = self.conn.cursor()
+        cursor.execute(query.replace("?", "%s"), params)
+        return cursor
+
+    def commit(self) -> None:
+        self.conn.commit()
+
+    def close(self) -> None:
+        self.conn.close()
+
+
 def init_db() -> None:
+    if USE_POSTGRES:
+        init_postgres_db()
+        return
+
     os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
     conn = sqlite3.connect(DATABASE_PATH)
     conn.execute("PRAGMA foreign_keys = ON")
@@ -125,15 +152,82 @@ def init_db() -> None:
     conn.commit()
     conn.close()
 
+def init_postgres_db() -> None:
+    conn = PostgresConnection(DATABASE_URL)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS projects (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            project_name TEXT NOT NULL,
+            github_url TEXT,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS reviews (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            review_type TEXT NOT NULL,
+            language TEXT NOT NULL,
+            overall_score INTEGER NOT NULL,
+            summary TEXT NOT NULL,
+            source_code TEXT NOT NULL,
+            findings TEXT NOT NULL,
+            complexity TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS review_findings (
+            id SERIAL PRIMARY KEY,
+            review_id INTEGER NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+            severity TEXT NOT NULL,
+            issue TEXT NOT NULL,
+            explanation TEXT NOT NULL,
+            suggested_fix TEXT NOT NULL,
+            file_name TEXT,
+            line_number INTEGER
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
 
-init_db()
 
+def get_db_connection() -> sqlite3.Connection | PostgresConnection:
+    if USE_POSTGRES:
+        return PostgresConnection(DATABASE_URL)
 
-def get_db_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def get_last_insert_id(conn: sqlite3.Connection | PostgresConnection) -> int:
+    query = "SELECT LASTVAL() AS id" if USE_POSTGRES else "SELECT last_insert_rowid() AS id"
+    return int(conn.execute(query).fetchone()["id"])
+
+
+init_db()
 
 
 def hash_password(password: str) -> str:
@@ -162,8 +256,13 @@ def get_current_user(request: Request) -> dict[str, Any] | None:
     except Exception:
         return None
 
+    try:
+        user_id = int(payload.get("sub", ""))
+    except (TypeError, ValueError):
+        return None
+
     conn = get_db_connection()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (payload.get("sub"),)).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     conn.close()
     return dict(user) if user else None
 
@@ -213,7 +312,7 @@ async def signup(request: Request, name: str = Form(...), email: str = Form(...)
         "INSERT INTO users (name, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
         (name.strip(), email.lower(), hash_password(password), created_at),
     )
-    user_id = conn.execute("SELECT last_insert_rowid() as id").fetchone()["id"]
+    user_id = get_last_insert_id(conn)
     conn.commit()
     conn.close()
     token = create_token(user_id)
@@ -249,6 +348,15 @@ async def dashboard(request: Request) -> HTMLResponse:
         (user["id"],),
     ).fetchone()
     conn.close()
+    error_messages = {
+        "project": "Create or select a project before generating a review.",
+        "unsupported": "That file type is not supported. Use Python, JavaScript, TypeScript, Java, C, or C++.",
+        "empty": "Paste code or upload a source file before generating a review.",
+        "name": "Enter a project name to create a workspace.",
+    }
+    notice_messages = {
+        "project_created": "Project created. It is now available in Select Project.",
+    }
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -258,7 +366,8 @@ async def dashboard(request: Request) -> HTMLResponse:
             "projects": [dict(project) for project in projects],
             "reviews": [dict(review) for review in reviews],
             "stats": dict(stats),
-            "error": request.query_params.get("error"),
+            "error": error_messages.get(request.query_params.get("error", "")),
+            "notice": notice_messages.get(request.query_params.get("notice", "")),
         },
     )
 
@@ -268,6 +377,8 @@ async def create_project(request: Request, project_name: str = Form(...), github
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
+    if not project_name.strip():
+        return RedirectResponse(url="/dashboard?error=name#new-review", status_code=303)
 
     conn = get_db_connection()
     conn.execute(
@@ -276,7 +387,7 @@ async def create_project(request: Request, project_name: str = Form(...), github
     )
     conn.commit()
     conn.close()
-    return RedirectResponse(url="/dashboard", status_code=303)
+    return RedirectResponse(url="/dashboard?notice=project_created#new-review", status_code=303)
 
 
 @app.post("/review")
@@ -299,9 +410,15 @@ async def create_review(
         if ext not in allowed:
             return RedirectResponse(url="/dashboard?error=unsupported", status_code=303)
         source_code = (await file.read()).decode("utf-8", errors="replace")
+    if not source_code.strip():
+        return RedirectResponse(url="/dashboard?error=empty#new-review", status_code=303)
+    try:
+        selected_project_id = int(project_id)
+    except ValueError:
+        return RedirectResponse(url="/dashboard?error=project#new-review", status_code=303)
 
     conn = get_db_connection()
-    project = conn.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, user["id"])).fetchone()
+    project = conn.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (selected_project_id, user["id"])).fetchone()
     if not project:
         conn.close()
         return RedirectResponse(url="/dashboard?error=project", status_code=303)
@@ -323,7 +440,7 @@ async def create_review(
             datetime.utcnow().isoformat(),
         ),
     )
-    review_id = conn.execute("SELECT last_insert_rowid() as id").fetchone()["id"]
+    review_id = get_last_insert_id(conn)
     for finding in review_result["findings"]:
         conn.execute(
             "INSERT INTO review_findings (review_id, severity, issue, explanation, suggested_fix, file_name, line_number) VALUES (?, ?, ?, ?, ?, ?, ?)",
